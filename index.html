@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYAHRU_NST // NEURAL_OS</title>
+    
+    <!-- External Frameworks & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;500;800&display=swap" rel="stylesheet">
+    
+    <!-- 3D & Particle Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+
+    <style>
+        /* --- SISTEM 3 TEMA GLOBAL --- */
+        :root { 
+            --neon: #00f2ff; 
+            --neon-glow: rgba(0, 242, 255, 0.4);
+            --os-bg: rgba(6, 15, 30, 0.6);
+            --topbar-bg: rgba(2, 6, 14, 0.7);
+            --panel-overlay: rgba(4, 12, 24, 0.75);
+            --border-color: rgba(0, 242, 255, 0.35);
+            --card-bg: rgba(0, 0, 0, 0.45);
+            --blur-val: 16px;
+        }
+
+        /* 1. TEMA GLASS (CYAN NEON) */
+        body.mode-glass { 
+            --neon: #00f2ff; 
+            --neon-glow: rgba(0, 242, 255, 0.4);
+            --os-bg: rgba(6, 15, 30, 0.6);
+            --topbar-bg: rgba(2, 6, 14, 0.7);
+            --panel-overlay: rgba(4, 12, 24, 0.75);
+            --border-color: rgba(0, 242, 255, 0.35);
+            --card-bg: rgba(0, 0, 0, 0.45);
+            --blur-val: 16px; 
+        }
+
+        /* 2. TEMA CYBER SECURITY (CRIMSON RED ALERT / SOC PROTOCOL) */
+        body.mode-cybersec { 
+            --neon: #ff003c; 
+            --neon-glow: rgba(255, 0, 60, 0.5);
+            --os-bg: rgba(18, 4, 8, 0.75);
+            --topbar-bg: rgba(12, 2, 5, 0.85);
+            --panel-overlay: rgba(16, 2, 6, 0.82);
+            --border-color: rgba(255, 0, 60, 0.45);
+            --card-bg: rgba(26, 4, 10, 0.6);
+            --blur-val: 14px; 
+        }
+
+        /* 3. TEMA MATRIX (CYBER GREEN) */
+        body.mode-matrix { 
+            --neon: #00ff66; 
+            --neon-glow: rgba(0, 255, 102, 0.4);
+            --os-bg: rgba(3, 20, 10, 0.65);
+            --topbar-bg: rgba(1, 10, 4, 0.75);
+            --panel-overlay: rgba(2, 16, 8, 0.8);
+            --border-color: rgba(0, 255, 102, 0.4);
+            --card-bg: rgba(0, 20, 8, 0.55);
+            --blur-val: 14px; 
+        }
+
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            background: #000; 
+            overflow: hidden; 
+            font-family: 'JetBrains Mono', monospace; 
+            color: #ffffff; 
+            user-select: none;
+        }
+
+        #vanta-canvas { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 1; 
+            opacity: 0.65; 
+        }
+
+        .layer-container {
+            position: relative; 
+            z-index: 20; 
+            height: 100vh;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            perspective: 1500px;
+            padding: 20px;
+        }
+
+        .os-window {
+            width: 95%;
+            max-width: 1200px;
+            height: 85vh; 
+            backdrop-filter: blur(var(--blur-val));
+            -webkit-backdrop-filter: blur(var(--blur-val));
+            border: 1px solid var(--border-color);
+            border-radius: 20px; 
+            display: flex; 
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 25px var(--neon-glow);
+            overflow: hidden;
+            background: var(--os-bg);
+            transition: all 0.4s ease;
+        }
+
+        .top-bar {
+            padding: 14px 28px; 
+            border-bottom: 1px solid var(--border-color);
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: var(--topbar-bg);
+            flex-wrap: wrap;
+            gap: 15px;
+            z-index: 10;
+            transition: all 0.4s ease;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 16px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent; 
+            opacity: 0.5; 
+            letter-spacing: 2px;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .nav-btn:hover {
+            opacity: 0.85;
+            color: var(--neon);
+        }
+
+        .nav-btn.active { 
+            opacity: 1; 
+            border-bottom: 2px solid var(--neon); 
+            color: var(--neon); 
+            text-shadow: 0 0 10px var(--neon-glow); 
+        }
+
+        /* Class Aksen Dinamis */
+        .neon-text { color: var(--neon) !important; transition: color 0.4s ease; }
+        .neon-border { border-color: var(--neon) !important; transition: border-color 0.4s ease; }
+        .neon-bg { background-color: var(--neon) !important; transition: background-color 0.4s ease; }
+        .theme-card { background: var(--card-bg) !important; border-color: var(--border-color) !important; transition: all 0.4s ease; }
+
+        /* --- STILASI IKON SOSIAL MEDIA NEON & VIBRANT --- */
+        .social-link {
+            width: 48px; 
+            height: 48px; 
+            border-radius: 14px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 20px; 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            position: relative;
+        }
+
+        /* WhatsApp */
+        .social-link.wa {
+            color: #25D366;
+            background: rgba(37, 211, 102, 0.12);
+            border: 1px solid rgba(37, 211, 102, 0.35);
+        }
+        .social-link.wa:hover {
+            background: rgba(37, 211, 102, 0.25);
+            border-color: #25D366;
+            box-shadow: 0 0 20px rgba(37, 211, 102, 0.6);
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        /* Instagram */
+        .social-link.ig {
+            color: #ff4b72;
+            background: rgba(225, 48, 108, 0.12);
+            border: 1px solid rgba(225, 48, 108, 0.35);
+        }
+        .social-link.ig:hover {
+            color: #ffffff;
+            background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
+            border-color: #ff3377;
+            box-shadow: 0 0 22px rgba(225, 48, 108, 0.65);
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        /* TikTok */
+        .social-link.tt {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 0, 80, 0.35);
+            text-shadow: -1.5px -1.5px 0 #00f2fe, 1.5px 1.5px 0 #fe2c55;
+        }
+        .social-link.tt:hover {
+            border-color: #00f2fe;
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: -4px 0 18px rgba(0, 242, 254, 0.6), 4px 0 18px rgba(254, 44, 85, 0.6);
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        /* Facebook */
+        .social-link.fb {
+            color: #1877F2;
+            background: rgba(24, 119, 242, 0.12);
+            border: 1px solid rgba(24, 119, 242, 0.35);
+        }
+        .social-link.fb:hover {
+            background: rgba(24, 119, 242, 0.25);
+            border-color: #1877F2;
+            box-shadow: 0 0 20px rgba(24, 119, 242, 0.6);
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        /* GitHub */
+        .social-link.gh {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .social-link.gh:hover {
+            color: #000000;
+            background: #ffffff;
+            border-color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        .screen-content { 
+            display: none; 
+            padding: 40px; 
+            height: 100%;
+            background-size: cover;
+            background-repeat: no-repeat;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+        }
+
+        /* Latar Belakang Gambar Slide */
+        #home {
+            background-image: linear-gradient(var(--panel-overlay), var(--panel-overlay)), url("SYAHRU 2.jpeg");
+            background-position: center 48%;
+        }
+
+        #edu {
+            background-image: linear-gradient(var(--panel-overlay), var(--panel-overlay)), url("SYAHRU 1.jpeg");
+            background-position: center 45%;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        #skills {
+            background-image: linear-gradient(var(--panel-overlay), var(--panel-overlay)), url("SYAHRU 7.jpeg");
+            background-position: center 90%;
+        }
+
+        #contact {
+            background-image: linear-gradient(var(--panel-overlay), var(--panel-overlay)), url("SYAHRU 5.jpeg");
+            background-position: center 92%;
+        }  
+
+        .screen-content.active { display: block; }
+
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(15px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex; 
+            gap: 3px; 
+            background: rgba(0,0,0,0.65); 
+            padding: 3px; 
+            border-radius: 50px; 
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .mode-dot {
+            padding: 4px 10px; 
+            font-size: 9px; 
+            font-weight: 800; 
+            cursor: pointer; 
+            border-radius: 50px; 
+            border: none;
+            background: transparent;
+            transition: all 0.3s ease; 
+            color: rgba(255,255,255,0.6);
+        }
+
+        .mode-dot.active { 
+            background: var(--neon); 
+            color: #000; 
+            box-shadow: 0 0 12px var(--neon-glow); 
+        }
+        
+        .skill-icon { 
+            font-size: 14px; 
+            filter: drop-shadow(0 0 5px var(--neon)); 
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon); }
+    </style>
+</head>
+<body class="mode-glass">
+
+    <div id="vanta-canvas"></div>
+    
+    <div class="layer-container">
+        <div class="os-window" id="ui-frame">
+            
+            <header class="top-bar">
+                <div class="flex items-center gap-5">
+                    <h1 class="font-['Orbitron'] text-sm tracking-[5px] font-black italic">
+                        SYAHRU<span class="neon-text">_19</span>
+                    </h1>
+                    
+                    <!-- 3 MODE SELECTION: GLASS, CYBER_SEC, MATRIX -->
+                    <div class="mode-selector">
+                        <button type="button" id="m-glass" class="mode-dot active" onclick="setMode('glass')">GLASS</button>
+                        <button type="button" id="m-cybersec" class="mode-dot" onclick="setMode('cybersec')">CYBER_SEC</button>
+                        <button type="button" id="m-matrix" class="mode-dot" onclick="setMode('matrix')">MATRIX</button>
+                    </div>
+                </div>
+
+                <nav class="flex gap-1 overflow-x-auto">
+                    <button type="button" onclick="openScreen('home', this)" class="nav-btn active">01_PROFIL</button>
+                    <button type="button" onclick="openScreen('edu', this)" class="nav-btn">02_PENDIDIKAN</button>
+                    <button type="button" onclick="openScreen('skills', this)" class="nav-btn">03_SKILLS</button>
+                    <button type="button" onclick="openScreen('contact', this)" class="nav-btn">04_KONTAK</button>
+                </nav>
+
+                <div class="text-right hidden sm:block">
+                    <p id="clock" class="font-['Orbitron'] neon-text text-lg leading-none">00:00:00</p>
+                    <p id="date" class="text-[8px] opacity-40 uppercase tracking-widest mt-1">LOADING...</p>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto">
+                
+                <!-- Slide 1: Core -->
+                <section id="home" class="screen-content active">
+                    <div class="max-w-2xl">
+                        <span class="text-[10px] neon-text font-bold tracking-[0.5em] mb-4 block">// SYSTEM_STATUS: ONLINE</span>
+                        <h2 class="text-4xl md:text-6xl font-black font-['Orbitron'] italic mb-6 leading-tight">
+                            SYAHRU <span class="neon-text">RAMADHAN.</span>
+                        </h2>
+                        <p class="text-gray-300 leading-relaxed font-light italic text-sm md:text-base border-l-2 neon-border pl-4">
+                            Mahasiswa Ilmu Komputer Universitas Negeri Medan dengan fokus pada pengolahan data dan komputasi modern. Selamat datang di modul portofolio interaktif saya.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Slide 2: Archive / Riwayat Pendidikan -->
+                <section id="edu" class="screen-content">
+                    <div class="max-w-2xl">
+                        <h2 class="text-2xl md:text-3xl font-['Orbitron'] italic mb-6 text-white/90">ACADEMIC_HISTORY</h2>
+                        
+                        <div class="space-y-3 max-h-[58vh] overflow-y-auto pr-2">
+                            
+                            <!-- 1. Perguruan Tinggi -->
+                            <div class="p-4 theme-card border-l-4 neon-border rounded-r-xl backdrop-blur-md hover:bg-black/60 transition-all">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-bold uppercase tracking-wide text-sm md:text-base text-white">Universitas Negeri Medan</h4>
+                                    <span class="text-[9px] font-mono neon-text px-2 py-0.5 rounded border neon-border bg-black/40">AKTIF</span>
+                                </div>
+                                <p class="text-xs neon-text font-mono mt-1">S1 Ilmu Komputer // 2025 - Sekarang</p>
+                                <p class="text-[11px] text-gray-300 font-sans mt-1">Fokus pada algoritma, komputasi, dan analisis sistem data.</p>
+                            </div>
+
+                            <!-- 2. Pendidikan Menengah (Ponpes) -->
+                            <div class="p-4 theme-card border-l-4 border-gray-500 rounded-r-xl backdrop-blur-md hover:bg-black/60 transition-all">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-bold uppercase tracking-wide text-sm md:text-base text-white">Ponpes Musthafawiyah</h4>
+                                    <span class="text-[9px] font-mono text-gray-400 px-2 py-0.5 rounded border border-gray-700 bg-black/40">LULUS</span>
+                                </div>
+                                <p class="text-xs text-gray-400 font-mono mt-1">Tingkat Menengah (Tsanawiyah & Aliyah) // 2018 - 2025</p>
+                                <p class="text-[11px] text-gray-400 font-sans mt-1">
+                                    Pendalaman literatur Islam klasik (Kitab Kuning), kaidah gramatika bahasa Arab (Nahwu & Sharaf), Fiqh, Hadits, serta pembinaan akhlak dan adab keilmuan.
+                                </p>
+                            </div>
+
+                            <!-- 3. Pendidikan Dasar (SD) -->
+                            <div class="p-4 theme-card border-l-4 border-gray-700 rounded-r-xl backdrop-blur-md hover:bg-black/60 transition-all">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-bold uppercase tracking-wide text-sm md:text-base text-white">SD NEGERI 200211</h4>
+                                    <span class="text-[9px] font-mono text-gray-400 px-2 py-0.5 rounded border border-gray-700 bg-black/40">LULUS</span>
+                                </div>
+                                <p class="text-xs text-gray-400 font-mono mt-1">Pendidikan Dasar // 2012 - 2018</p>
+                                <p class="text-[11px] text-gray-400 font-sans mt-1">Pendidikan dasar akademis, logika matematika dasar, dan literasi.</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Slide 3: Skills / Keahlian -->
+                <section id="skills" class="screen-content">
+                    <div class="max-w-2xl">
+                        <h2 class="text-2xl md:text-3xl font-['Orbitron'] italic mb-6 text-white/90">TECHNICAL_STACK</h2>
+                        
+                        <div class="space-y-4 max-h-[58vh] overflow-y-auto pr-2">
+                            
+                            <!-- Skill 1: Microsoft Excel -->
+                            <div class="p-4 theme-card rounded-xl border">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-file-excel neon-text skill-icon"></i>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-white">MICROSOFT EXCEL & SPREADSHEET</span>
+                                    </div>
+                                    <span class="text-xs font-mono neon-text font-bold">88%</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mb-2">
+                                    <div class="h-full neon-bg w-[88%] shadow-[0_0_10px_var(--neon)]"></div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 font-sans">Formula Lanjutan (XLOOKUP, Nested IF), Pivot Table, Pemodelan Data & Dashboard.</p>
+                            </div>
+
+                            <!-- Skill 2: Komputasi & Pemrograman Dasar -->
+                            <div class="p-4 theme-card rounded-xl border">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-code neon-text skill-icon"></i>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-white">COMPUTATION & WEB INTERFACE</span>
+                                    </div>
+                                    <span class="text-xs font-mono neon-text font-bold">75%</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mb-2">
+                                    <div class="h-full neon-bg w-[75%] shadow-[0_0_10px_var(--neon)]"></div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 font-sans">Logika algoritma, struktur data dasar, serta perancangan antarmuka web modern.</p>
+                            </div>
+
+                            <!-- Skill 3: Bahasa Arab & Turats -->
+                            <div class="p-4 theme-card rounded-xl border">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-book-quran neon-text skill-icon"></i>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-white">ARABIC SYNTAX & KAJIAN TURATS</span>
+                                    </div>
+                                    <span class="text-xs font-mono neon-text font-bold">85%</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mb-2">
+                                    <div class="h-full neon-bg w-[85%] shadow-[0_0_10px_var(--neon)]"></div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 font-sans">Kajian literatur klasik (Kitab Kuning) dan analisis gramatika Arab (Nahwu & Sharaf).</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Slide 4: Link / Kontak -->
+                <section id="contact" class="screen-content">
+                    <h2 class="text-2xl md:text-3xl font-['Orbitron'] italic mb-8 text-white/90">COMMUNICATION_CHANNELS</h2>
+                    <div class="flex gap-4 flex-wrap">
+                        <a href="https://wa.me/6285372751048" target="_blank" rel="noopener noreferrer" class="social-link wa" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                        <a href="https://instagram.com/syahru_199" target="_blank" rel="noopener noreferrer" class="social-link ig" title="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="https://www.tiktok.com/@minotaur_32?_r=1&_t=ZS-99Lj0ovhcX4" target="_blank" rel="noopener noreferrer" class="social-link tt" title="TikTok"><i class="fab fa-tiktok"></i></a>
+                        <a href="https://www.facebook.com/profile.php?id=61584021717321" target="_blank" rel="noopener noreferrer" class="social-link fb" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="https://github.com/syhruramadhan30-max/SyahruRamadhan" target="_blank" rel="noopener noreferrer" class="social-link gh" title="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                    <div class="mt-10 p-6 border border-dashed neon-border rounded-xl max-w-md theme-card backdrop-blur-md">
+                        <p class="text-xs font-mono text-gray-300 leading-relaxed">
+                            &gt; Menerima kolaborasi proyek pengembangan web dan Spreadsheet Excel.<br>
+                            &gt; Lokasi: Medan, Sumatera Utara.
+                        </p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playUISound(type) {
+            initAudio();
+            if (!audioCtx) return;
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            } else if (type === 'mode') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(180, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(750, audioCtx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            }
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function openScreen(screenId, btn) {
+            playUISound('click');
+            document.querySelectorAll('.screen-content').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // LOGIKA PERUBAHAN 3 MODE (GLASS, CYBER_SEC, MATRIX)
+        function setMode(mode) {
+            playUISound('mode');
+            const body = document.body;
+            document.querySelectorAll('.mode-dot').forEach(d => d.classList.remove('active'));
+
+            if (mode === 'cybersec') {
+                body.className = 'mode-cybersec';
+                document.getElementById('m-cybersec').classList.add('active');
+                
+                // Konfigurasi 3D Mode Cyber Security (Crimson Red Protocol)
+                if (vantaEffect) {
+                    vantaEffect.setOptions({
+                        color: 0xff003c,
+                        backgroundColor: 0x0a0104,
+                        points: 13.0,
+                        maxDistance: 22.0
+                    });
+                }
+            } else if (mode === 'matrix') {
+                body.className = 'mode-matrix';
+                document.getElementById('m-matrix').classList.add('active');
+                
+                // Konfigurasi 3D Mode Matrix (Cyber Green)
+                if (vantaEffect) {
+                    vantaEffect.setOptions({
+                        color: 0x00ff66,
+                        backgroundColor: 0x021006,
+                        points: 13.0,
+                        maxDistance: 22.0
+                    });
+                }
+            } else {
+                body.className = 'mode-glass';
+                document.getElementById('m-glass').classList.add('active');
+                
+                // Konfigurasi 3D Mode Glass (Cyan Glow)
+                if (vantaEffect) {
+                    vantaEffect.setOptions({
+                        color: 0x00f2ff,
+                        backgroundColor: 0x030a16,
+                        points: 12.0,
+                        maxDistance: 20.0
+                    });
+                }
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+            document.getElementById('date').textContent = now.toDateString().toUpperCase();
+        }
+        setInterval(updateClock, 1000); 
+        updateClock();
+
+        const uiFrame = document.getElementById('ui-frame');
+        document.addEventListener('mousemove', (e) => {
+            const x = (window.innerWidth / 2 - e.clientX) / 85;
+            const y = (window.innerHeight / 2 - e.clientY) / 85;
+            uiFrame.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
+        });
+
+        let vantaEffect = VANTA.NET({
+            el: "#vanta-canvas",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            scale: 1.0,
+            scaleMobile: 1.0,
+            color: 0x00f2ff,
+            backgroundColor: 0x030a16,
+            points: 12.0,
+            maxDistance: 20.0,
+            spacing: 15.0
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (vantaEffect) vantaEffect.destroy();
+        });
+    </script>
+</body>
+</html>
